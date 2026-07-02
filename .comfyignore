@@ -1,0 +1,6 @@
+__pycache__/
+*.py[cod]
+.git/
+.github/
+prompt_locks/
+*.zip

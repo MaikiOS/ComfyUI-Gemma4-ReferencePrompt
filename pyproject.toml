@@ -1,0 +1,18 @@
+[project]
+name = "comfyui-gemma4-referenceprompt"
+version = "0.1.0"
+description = "Gemma 4 reference-image prompt nodes for ComfyUI"
+license = "MIT"
+requires-python = ">=3.10"
+dependencies = [
+  "transformers>=5.5.0",
+  "accelerate>=1.0.0",
+]
+
+[project.urls]
+Repository = "https://github.com/MaikiOS/ComfyUI-Gemma4-ReferencePrompt"
+
+[tool.comfy]
+PublisherId = "MaikiOS"
+DisplayName = "ComfyUI Gemma4 Reference Prompt"
+Icon = ""

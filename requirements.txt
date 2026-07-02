@@ -1,0 +1,2 @@
+transformers>=5.5.0
+accelerate>=1.0.0
