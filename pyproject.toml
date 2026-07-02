@@ -13,6 +13,6 @@ dependencies = [
 Repository = "https://github.com/MaikiOS/ComfyUI-Gemma4-ReferencePrompt"
 
 [tool.comfy]
-PublisherId = "MaikiOS"
+PublisherId = "maikios"
 DisplayName = "ComfyUI Gemma4 Reference Prompt"
 Icon = ""
