@@ -11,7 +11,15 @@ The pair-lock node creates positive and negative prompts from one reference imag
 
 ## Install
 
-With ComfyUI Manager:
+With ComfyUI Manager / Registry:
+
+1. Open Manager.
+2. Search for `comfyui-gemma4-referenceprompt` or `ComfyUI Gemma4 Reference Prompt`.
+3. Install it.
+4. Install requirements if Manager asks.
+5. Fully restart ComfyUI.
+
+Fallback Git URL install:
 
 1. Open Manager.
 2. Use "Install via Git URL".
@@ -19,6 +27,12 @@ With ComfyUI Manager:
 
 ```text
 https://github.com/MaikiOS/ComfyUI-Gemma4-ReferencePrompt
+```
+
+Publisher:
+
+```text
+@maikios
 ```
 
 Manual install:

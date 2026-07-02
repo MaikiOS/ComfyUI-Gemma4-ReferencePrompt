@@ -1,6 +1,6 @@
 [project]
 name = "comfyui-gemma4-referenceprompt"
-version = "0.1.0"
+version = "0.1.1"
 description = "Gemma 4 reference-image prompt nodes for ComfyUI"
 license = "MIT"
 requires-python = ">=3.10"
