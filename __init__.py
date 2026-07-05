@@ -1,4 +1,5 @@
 import hashlib
+import gc
 import json
 import re
 from pathlib import Path
@@ -52,6 +53,21 @@ def _load_model(model_id: str, dtype: str):
     model.eval()
     _MODEL_CACHE[key] = (processor, model)
     return processor, model
+
+
+def _release_gemma_vram():
+    _MODEL_CACHE.clear()
+    gc.collect()
+
+    try:
+        import comfy.model_management
+
+        comfy.model_management.soft_empty_cache(force=True)
+    except Exception:
+        if torch.cuda.is_available():
+            torch.cuda.synchronize()
+            torch.cuda.empty_cache()
+            torch.cuda.ipc_collect()
 
 
 def _generate_text(image, instruction, model_id, max_new_tokens, temperature, dtype):
@@ -172,6 +188,7 @@ class Gemma4ReferencePrompt:
                 "max_new_tokens": ("INT", {"default": 384, "min": 64, "max": 2048, "step": 16}),
                 "temperature": ("FLOAT", {"default": 0.2, "min": 0.0, "max": 2.0, "step": 0.05}),
                 "dtype": (["auto", "bf16", "fp16", "fp32"], {"default": "auto"}),
+                "unload_after_generate": ("BOOLEAN", {"default": True}),
             }
         }
 
@@ -181,18 +198,22 @@ class Gemma4ReferencePrompt:
     CATEGORY = "Gemma4"
     DESCRIPTION = "Gemma 4 image+text to text prompt generator for reference-image prompt routing."
 
-    def caption(self, image, instruction, model_id, max_new_tokens, temperature, dtype):
-        return (_generate_text(image, instruction, model_id, max_new_tokens, temperature, dtype),)
+    def caption(self, image, instruction, model_id, max_new_tokens, temperature, dtype, unload_after_generate):
+        try:
+            return (_generate_text(image, instruction, model_id, max_new_tokens, temperature, dtype),)
+        finally:
+            if unload_after_generate:
+                _release_gemma_vram()
 
     @classmethod
-    def IS_CHANGED(cls, image, instruction, model_id, max_new_tokens, temperature, dtype):
+    def IS_CHANGED(cls, image, instruction, model_id, max_new_tokens, temperature, dtype, unload_after_generate):
         h = hashlib.sha1()
         h.update(str(instruction).encode("utf-8"))
         h.update(str(model_id).encode("utf-8"))
         h.update(str(max_new_tokens).encode("utf-8"))
         h.update(str(temperature).encode("utf-8"))
         h.update(str(dtype).encode("utf-8"))
-        h.update(image.detach().cpu().numpy().tobytes())
+        h.update(str(unload_after_generate).encode("utf-8"))
         return h.hexdigest()
 
 
@@ -235,6 +256,7 @@ class Gemma4ReferencePromptPairLock:
                 "max_new_tokens": ("INT", {"default": 512, "min": 64, "max": 2048, "step": 16}),
                 "temperature": ("FLOAT", {"default": 0.1, "min": 0.0, "max": 2.0, "step": 0.05}),
                 "dtype": (["auto", "bf16", "fp16", "fp32"], {"default": "auto"}),
+                "unload_after_generate": ("BOOLEAN", {"default": True}),
             },
             "hidden": {
                 "unique_id": "UNIQUE_ID",
@@ -258,6 +280,7 @@ class Gemma4ReferencePromptPairLock:
         max_new_tokens,
         temperature,
         dtype,
+        unload_after_generate,
         unique_id=None,
     ):
         if lock_prompt and not refresh_lock:
@@ -271,11 +294,15 @@ class Gemma4ReferencePromptPairLock:
             "Return ONLY valid JSON with exactly these keys:\n"
             "{\"positive_prompt\":\"...\", \"negative_prompt\":\"...\"}"
         )
-        text = _generate_text(image, instruction, model_id, max_new_tokens, temperature, dtype)
-        positive, negative = _parse_prompt_pair(text)
-        if lock_prompt or refresh_lock:
-            _write_lock(unique_id, positive, negative)
-        return positive, negative
+        try:
+            text = _generate_text(image, instruction, model_id, max_new_tokens, temperature, dtype)
+            positive, negative = _parse_prompt_pair(text)
+            if lock_prompt or refresh_lock:
+                _write_lock(unique_id, positive, negative)
+            return positive, negative
+        finally:
+            if unload_after_generate:
+                _release_gemma_vram()
 
     @classmethod
     def IS_CHANGED(
@@ -289,6 +316,7 @@ class Gemma4ReferencePromptPairLock:
         max_new_tokens,
         temperature,
         dtype,
+        unload_after_generate,
         unique_id=None,
     ):
         if refresh_lock:
@@ -307,9 +335,9 @@ class Gemma4ReferencePromptPairLock:
             temperature,
             dtype,
             lock_prompt,
+            unload_after_generate,
         ):
             h.update(str(value).encode("utf-8"))
-        h.update(image.detach().cpu().numpy().tobytes())
         return h.hexdigest()
 
 
